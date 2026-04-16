@@ -1,0 +1,34 @@
+Upgrade 1 adds Wi-Fi provisioning, Wi-Fi OTA, and a local web app to the Smart Pot firmware while preserving the existing local-first watering behavior.
+
+Included scope:
+- Wi-Fi provisioning state machine
+  - If no saved credentials exist, start SoftAP.
+  - If credentials exist, try normal station mode.
+  - If connection fails repeatedly (3 times), fall back to setup mode.
+- Credential storage
+  - Save SSID/password in Preferences/NVS.
+  - Do not store hostname.
+  - Do not store setup/admin password.
+- Re-provisioning flow
+  - Serial command only.
+- OTA style
+  - ArduinoOTA.
+- Basic security
+  - Protect the setup portal and OTA path.
+- Status and discovery
+  - Device hostname / mDNS: Smart Pot / `smart-pot.local`.
+  - Small status page showing Wi-Fi state and firmware version.
+- User feedback
+  - LED patterns for setup mode, connecting, connected, OTA in progress, and error.
+- Front-end app
+  - Served directly from the ESP32 when the device is connected to the same Wi-Fi.
+  - Request/response communication only.
+  - Display pot status such as current moisture and Wi-Fi/firmware state.
+  - Allow configuration of runtime parameters such as moisture thresholds, pulse duration, cooldown, sample interval, and calibration values.
+
+Non-goals for this upgrade:
+- BLE provisioning
+- Cloud connectivity
+- Streaming telemetry
+- Historical charts
+- Remote internet control

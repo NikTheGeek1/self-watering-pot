@@ -1,16 +1,16 @@
 # Smart Plant ESP32 Controller
 
-This repo now contains the first real controller firmware for the hardware described in `smart_plant_watering_tech_spec.md`.
+This firmware runs the Smart Pot controller described in `smart_plant_watering_tech_spec.md`.
 
 ## What It Does
-- Blinks the green LED on `GPIO18` as a heartbeat so you can confirm the board is running.
-- Reads and reports the raw soil moisture ADC value from `GPIO34` at `115200` baud.
-- Supports dry and wet calibration points captured from the live sensor.
-- Converts the raw moisture reading into a calibrated moisture percentage.
+- Reads the soil moisture probe on `GPIO34`.
+- Stores dry and wet calibration points in `Preferences`.
+- Computes a calibrated moisture percentage.
 - Runs bounded manual or automatic pump pulses on `GPIO26`.
-- Uses the red LED on `GPIO19` only while the pump is active.
-- Enforces a minimum cooldown after every watering cycle.
-- Keeps automatic watering disabled on boot until you explicitly enable it.
+- Adds Wi-Fi provisioning through a protected setup AP.
+- Adds a protected LAN dashboard for status, settings, and calibration.
+- Adds Wi-Fi OTA updates with `ArduinoOTA`.
+- Publishes the device on the local network as `smart-pot.local`.
 
 ## Safe Defaults
 - Auto mode is `OFF` at every boot.
@@ -18,6 +18,7 @@ This repo now contains the first real controller firmware for the hardware descr
 - The default pump pulse is `1200 ms`.
 - The default cooldown after watering is `45000 ms`.
 - The default sample interval is `5000 ms`.
+- Wi-Fi setup uses a protected SoftAP when credentials are missing or fail 3 times in a row.
 
 ## Local Build Setup
 PlatformIO was installed into the local virtual environment at `.venv/`.
@@ -40,10 +41,23 @@ Open the serial monitor:
 .venv/bin/pio device monitor
 ```
 
+## Wi-Fi Provisioning
+- If no saved Wi-Fi credentials exist, the controller starts a setup AP named `Smart-Pot-Setup-XXXX`.
+- Connect to that AP using the shared firmware secret from `src/app_constants.h`.
+- Open `http://192.168.4.1` and submit the local Wi-Fi SSID and password.
+- If station mode fails 3 times, the controller falls back to the setup AP automatically.
+
+## LAN Dashboard And OTA
+- After joining Wi-Fi, the dashboard is available at `http://smart-pot.local/`.
+- The LAN UI and API use HTTP Basic Auth:
+  - Username: `smartpot`
+  - Password: the same shared secret used for setup AP and OTA
+- OTA uses `ArduinoOTA` with hostname `smart-pot`.
+
 ## Serial Commands
 - `help` or `h` or `?` prints help.
 - `read` or `m` prints a moisture reading immediately.
-- `status` or `s` prints calibration, pump, and threshold state.
+- `status` or `s` prints plant and network state.
 - `pump` or `p` runs one manual pump pulse.
 - `diag` or `d` drives `GPIO26` HIGH for `2000 ms`, then LOW for `2000 ms`.
 - `cal dry` saves the current reading as the dry calibration point.
@@ -55,26 +69,18 @@ Open the serial monitor:
 - `set sample <ms>` sets the periodic sensor sample interval.
 - `auto on` enables automatic watering if calibration is valid.
 - `auto off` disables automatic watering.
+- `wifi clear` erases only the saved Wi-Fi credentials and reopens setup AP mode.
 
 ## Calibration Workflow
-1. Place the moisture probe in your dry reference state and send `cal dry`.
-2. Place the probe in your wet reference state and send `cal wet`.
-3. Send `status` to confirm both calibration values are stored.
-4. Choose a threshold with `set threshold <n>`.
-5. Enable automatic watering with `auto on`.
-
-The controller computes moisture as a calibrated percentage between the stored dry and wet raw values, so it works even if your sensor's raw numbers decrease as the soil gets wetter.
-
-## First Automatic Test
-1. Keep the plant outlet and reservoir in a safe place.
-2. Flash the firmware.
-3. Run `cal dry` and `cal wet`.
-4. Send `set threshold 35`.
-5. Send `auto on`.
-6. Watch the serial output and verify that watering only happens when the calibrated moisture percentage falls below the threshold.
+1. Place the moisture probe in your dry reference state and send `cal dry`, or use the dashboard.
+2. Place the probe in your wet reference state and send `cal wet`, or use the dashboard.
+3. Send `status` or open the dashboard to confirm both calibration values are stored.
+4. Choose a threshold with `set threshold <n>` or the dashboard form.
+5. Enable automatic watering with `auto on` or the dashboard.
 
 ## Safety Notes
 - During USB-assisted testing, keep the ESP32 on USB power and leave the `buck OUT+ -> ESP32 5V/VIN` wire disconnected to avoid feeding the board from USB and the buck at the same time.
 - The firmware never starts automatic watering on boot.
+- OTA start places the pump logic into a lock state until reboot, so no new watering actions can begin mid-update.
 - Keep the tubing placed safely during manual pump tests.
 - Confirm calibration before trusting automatic watering decisions.

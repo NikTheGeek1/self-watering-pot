@@ -1,0 +1,59 @@
+Upgrade 1 Plan: Wi-Fi Provisioning, OTA, and Local Smart Pot UI
+
+Summary
+- Add SoftAP provisioning with fallback after 3 failed station attempts.
+- Add ArduinoOTA on Wi-Fi.
+- Add an ESP32-hosted web dashboard for status, settings, and calibration.
+- Add mDNS discovery as `smart-pot.local`.
+- Protect the setup AP, LAN UI/API, and OTA with a shared firmware secret.
+- Add LED feedback for network and OTA states.
+
+Implementation outline
+1. Create repo process files and root instructions for future agents.
+2. Refactor the firmware into focused modules so plant logic, persistence, networking, serial commands, LEDs, and web content stay separated.
+3. Keep plant behavior local-first:
+   - preserve moisture reads, calibration, pump pulse control, cooldown logic, and safe auto-watering defaults
+   - keep auto-watering disabled on boot
+4. Add Wi-Fi credential storage in Preferences:
+   - store SSID and password only
+   - keep existing plant settings in the same Preferences namespace
+   - `wifi clear` removes only Wi-Fi credentials
+5. Add a Wi-Fi state machine:
+   - `NoCredentials`
+   - `SetupAp`
+   - `StaConnecting`
+   - `StaConnected`
+   - `StaError`
+   - `OtaInProgress`
+   - 10-second station attempt timeout
+   - 5-second retry gap
+   - fallback to SoftAP after 3 failed attempts
+6. Add a protected SoftAP setup flow:
+   - SSID format `Smart-Pot-Setup-XXXX`
+   - captive-style DNS redirect to `192.168.4.1`
+   - provisioning page at `/`
+   - POST `/api/provision` to save Wi-Fi credentials and start station mode
+7. Add status, settings, and calibration over HTTP:
+   - GET `/` serves provisioning UI in AP mode and dashboard UI in STA mode
+   - GET `/api/status`
+   - POST `/api/settings`
+   - POST `/api/calibration/dry`
+   - POST `/api/calibration/wet`
+   - POST `/api/calibration/clear`
+   - JSON responses kept flat and simple
+8. Add ArduinoOTA:
+   - hostname `smart-pot`
+   - password matches shared firmware secret
+   - OTA disables new pump actions and suspends auto-watering until reboot
+9. Add LED patterns:
+   - green: setup, connecting, connected, OTA
+   - red: pump active or error
+10. Verify with a full PlatformIO build.
+
+Acceptance expectations
+- New devices boot into setup AP and can be provisioned from a phone or laptop browser.
+- Provisioned devices reconnect to Wi-Fi automatically and advertise `smart-pot.local`.
+- The dashboard exposes status, moisture readings, calibration values, and runtime settings.
+- The dashboard can update settings and calibration without using serial.
+- `wifi clear` immediately returns the device to setup mode without deleting plant settings.
+- OTA works over Wi-Fi and keeps persisted settings and credentials.

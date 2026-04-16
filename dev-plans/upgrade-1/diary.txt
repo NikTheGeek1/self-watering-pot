@@ -1,0 +1,24 @@
+2026-04-16
+- Created the Upgrade 1 planning folder, project brief, implementation plan, and root `AGENTS.md`.
+  Rationale: establish the requested process artifacts before the firmware refactor so future edits stay aligned with the implementation goal.
+- Replaced the single-file firmware with focused modules for config storage, plant control, networking, LEDs, serial commands, and embedded web content.
+  Rationale: the Wi-Fi provisioning, OTA, and dashboard features needed clear separation so the watering logic could remain local-first and maintainable.
+- Added the Wi-Fi state machine, protected setup AP, LAN dashboard/API, mDNS, ArduinoOTA integration, and `wifi clear`.
+  Rationale: this delivers the full Upgrade 1 networking scope while preserving the existing plant behavior and safe boot defaults.
+- Updated the README to document the new setup flow, local dashboard, OTA behavior, and serial command surface.
+  Rationale: the repository documentation needed to match the implemented provisioning and OTA workflow.
+- Moved the status LEDs to `GPIO13` (green) and `GPIO14` (red) in the firmware constants and hardware spec.
+  Rationale: align the codebase and wiring documentation with the revised LED pin choice for the actual build.
+
+- Fixed early web server startup so the HTTP server only starts after SoftAP or STA networking is active.
+  Rationale: the previously flashed image crashed at boot with an lwIP Invalid mbox assert because WebServer::begin() ran before the network stack was initialized.
+- Bumped the firmware version to `1.0.1-ota-test` and added a boot log marker for OTA verification.
+  Rationale: make the OTA test image easy to distinguish from the currently flashed serial image during boot and status checks.
+
+- Added `ArduinoOTA.begin()` after successful station connect so OTA actually listens on the configured port.
+  Rationale: the firmware previously advertised OTA as available but never started the OTA listener, so Wi-Fi updates could not begin.
+- Lowered `upload_speed` in `platformio.ini` to `115200` for reliable USB flashing during recovery and verified an OTA update from `1.0.0-upgrade1` to `1.0.1-ota-test`.
+  Rationale: the USB link was unstable at `460800`; lowering the baud rate stabilized recovery flashing and allowed the OTA path to be proven end to end.
+[2026-04-16] Added a persisted watering-history buffer with a 5-event cap, wired it into pump start/stop handling, exposed it in /api/status, and rendered it in the dashboard so recent watering runs are visible without adding cloud or streaming dependencies.
+[2026-04-16] Guarded history-key cleanup with Preferences.isKey() so saving the first few events does not emit noisy NOT_FOUND errors for empty slots.
+[2026-04-16] Added NTP-backed start/end timestamps to each watering event, stored them in Preferences, and updated the dashboard to render when a watering run started and ended in local browser time.

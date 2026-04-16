@@ -22,8 +22,8 @@ A 12V power supply feeds a Gravity MOSFET power controller and a 5V buck convert
 - 3D printed enclosure / brackets / tube holder / reservoir mount
 
 ## Fixed GPIO Assignment
-- Red LED: GPIO19
-- Green LED: GPIO18
+- Red LED: GPIO14
+- Green LED: GPIO13
 - MOSFET control signal: GPIO26
 - Soil moisture analog input: GPIO34
 
@@ -99,11 +99,11 @@ Sensor labels are `A`, `+`, `-`
 
 ### 7) LEDs
 **Red LED**
-- ESP32 `GPIO19` -> `200Ω resistor` -> LED long leg `+`
+- ESP32 `GPIO14` -> `200Ω resistor` -> LED long leg `+`
 - LED short leg `-` -> shared `GND`
 
 **Green LED**
-- ESP32 `GPIO18` -> `200Ω resistor` -> LED long leg `+`
+- ESP32 `GPIO13` -> `200Ω resistor` -> LED long leg `+`
 - LED short leg `-` -> shared `GND`
 
 LED grounds may return to any common ground point, including MOSFET ground.
@@ -112,8 +112,8 @@ LED grounds may return to any common ground point, including MOSFET ground.
 - Read raw analog moisture from GPIO34 and expose it for calibration.
 - Store dry and wet calibration values and compute a calibrated moisture percentage.
 - Drive GPIO26 high/low to control the pump through the MOSFET.
-- Use GPIO19 red LED for watering state or error state.
-- Use GPIO18 green LED for normal idle / healthy state.
+- Use GPIO14 red LED for watering state or error state.
+- Use GPIO13 green LED for normal idle / healthy state.
 - Start with conservative pump runtime, for example 1 to 3 seconds max per cycle.
 - Add a cooldown delay after watering before reading moisture again.
 - Treat moisture thresholds as calibration values, not universal constants.
