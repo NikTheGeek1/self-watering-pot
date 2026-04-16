@@ -41,6 +41,34 @@ Open the serial monitor:
 .venv/bin/pio device monitor
 ```
 
+## Test Setup
+The repo now has three test lanes:
+
+- Host-side firmware tests with PlatformIO native + GoogleTest
+- Browser automation for the embedded dashboard with Playwright
+- Script-assisted real-device smoke checks under `scripts/test_hardware/`
+
+Run the host-side firmware suite:
+
+```bash
+.venv/bin/pio test -e native
+```
+
+Install UI test dependencies:
+
+```bash
+npm ci
+npx playwright install --with-deps chromium
+```
+
+Run the dashboard suite:
+
+```bash
+npm run test:ui
+```
+
+See `dev-plans/upgrade-1/test-plan.txt` for the implementation/execution plan and `dev-plans/upgrade-1/test-inventory.txt` for the broader test backlog.
+
 ## Wi-Fi Provisioning
 - If no saved Wi-Fi credentials exist, the controller starts a setup AP named `Smart-Pot-Setup-XXXX`.
 - Connect to that AP using the shared firmware secret from `src/app_constants.h`.

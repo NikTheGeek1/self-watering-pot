@@ -1,0 +1,12 @@
+{
+  "name": "smart-pot-tests",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:ui-harness": "mkdir -p tests/ui/.tmp && c++ -std=c++17 -Itest/support/native/include -Isrc tests/ui/harness/render_web_content.cpp src/web_content.cpp -o tests/ui/.tmp/render_web_content",
+    "test:ui": "npm run build:ui-harness && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}

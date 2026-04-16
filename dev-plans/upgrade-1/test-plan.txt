@@ -1,0 +1,120 @@
+Upgrade 1 Test Implementation Plan
+
+Summary
+- Build the test system in three layers:
+  - host-side firmware tests with PlatformIO native + GoogleTest
+  - browser automation for the dashboard with Playwright
+  - script-assisted real-device validation for Wi-Fi, OTA, pump, LEDs, and provisioning
+- Gate CI on the host-side firmware suite and the browser suite.
+- Keep hardware validation local and script-assisted.
+
+Implementation order
+1. Add test scaffolding.
+- Native PlatformIO env.
+- GoogleTest entrypoint and fake support for Arduino/ESP32 APIs.
+- Playwright package, config, and UI harness server.
+- Hardware smoke-script folder and runbook.
+
+2. Add only the seams needed to make the current firmware testable.
+- Add a narrow time seam for TimeService so host tests can control sync state and epoch time.
+- Keep runtime firmware behavior unchanged.
+- Leave main.cpp as the production wiring point.
+
+3. Implement the host-side suites first.
+- ConfigStore:
+  - defaults
+  - settings clamping
+  - Wi-Fi credential save/load/clear isolation
+  - watering-history persistence and truncation
+- TimeService:
+  - unsynchronized and synchronized startup
+  - NTP sync start rules
+  - epoch reporting
+- PlantController:
+  - manual watering
+  - cooldown
+  - auto-mode preconditions
+  - OTA lock
+  - watering-history retention
+- LedManager:
+  - setup, connecting, connected, OTA, error, and pump-priority behavior
+- SerialConsole:
+  - pump and Wi-Fi-clear command routing
+- NetworkManager:
+  - setup AP startup
+  - STA connection success
+  - fallback after 3 failed attempts
+  - auth gating
+  - manual-watering API
+- Web content:
+  - generated provisioning page content
+  - generated dashboard content
+
+4. Implement the browser suite next.
+- Serve the real HTML from web_content.cpp through a small host harness.
+- Use a small Node server for auth, fake API responses, and mutable test state.
+- Cover:
+  - Basic Auth
+  - dashboard render
+  - settings save
+  - calibration actions
+  - Manual Watering button state and success banner
+  - watering-history rendering
+  - provisioning success/failure flows
+  - 5-second polling refresh
+
+5. Implement the hardware suite last.
+- Provide a Python smoke script driven by:
+  - SMART_POT_HOST
+  - SMART_POT_USER
+  - SMART_POT_PASSWORD
+  - SMART_POT_SERIAL_PORT
+  - SMART_POT_OTA_PASSWORD
+- Automate:
+  - status API access
+  - auth check
+  - manual-watering endpoint
+  - watering-history growth
+- Keep the runbook checklist for:
+  - setup AP verification
+  - OTA verification
+  - LED pattern confirmation
+  - physical pump validation
+  - safe power and tubing checks
+
+6. Add CI after the local suites are runnable.
+- Firmware build
+- pio test -e native
+- Playwright headless suite
+- Do not run hardware tests in CI
+
+How to run later
+- Native tests:
+  - .venv/bin/pio test -e native
+- UI tests:
+  - npm ci
+  - npx playwright install --with-deps chromium
+  - npm run test:ui
+- Hardware smoke:
+  - python3 scripts/test_hardware/smoke.py status
+  - python3 scripts/test_hardware/smoke.py manual-water
+
+Pre-merge expectations
+- Native tests pass.
+- Playwright tests pass.
+- Hardware smoke passes for changes affecting Wi-Fi, OTA, persistence, pump logic, or dashboard actions.
+
+Pre-release expectations
+- Clean provision from no credentials.
+- Invalid credential fallback after 3 attempts.
+- Dashboard auth and settings persistence.
+- Manual watering physical verification.
+- OTA upgrade and reconnect verification.
+- mDNS resolution.
+- Watering-history timestamp and retention verification.
+
+Assumptions
+- test-inventory.txt remains the exhaustive backlog.
+- test-plan.txt is the implementation and execution guide.
+- Browser tests use the host harness, not the real ESP32.
+- Hardware scripts target one configurable lab device through env vars.

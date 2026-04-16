@@ -197,6 +197,7 @@ void NetworkManager::configureRoutes() {
   server_.on("/", HTTP_GET, [this]() { handleRoot(); });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusApi(); });
   server_.on("/api/settings", HTTP_POST, [this]() { handleSettingsApi(); });
+  server_.on("/api/manual-water", HTTP_POST, [this]() { handleManualWaterApi(); });
   server_.on("/api/calibration/dry", HTTP_POST, [this]() { handleCalibrationDryApi(); });
   server_.on("/api/calibration/wet", HTTP_POST, [this]() { handleCalibrationWetApi(); });
   server_.on("/api/calibration/clear", HTTP_POST, [this]() { handleCalibrationClearApi(); });
@@ -298,6 +299,33 @@ void NetworkManager::handleSettingsApi() {
   }
 
   sendJsonResult(200, true, F("Settings updated."));
+}
+
+void NetworkManager::handleManualWaterApi() {
+  if (!authorizeStaRequest()) {
+    return;
+  }
+
+  const PlantStatusSnapshot plant = plantController_.snapshot(millis());
+  if (state_ == WiFiState::OtaInProgress || plant.otaLockActive) {
+    sendJsonResult(503, false,
+                   F("Manual watering is temporarily locked while OTA is in progress."));
+    return;
+  }
+
+  if (plant.pumpRunning) {
+    sendJsonResult(409, false, F("Pump is already running."));
+    return;
+  }
+
+  if (!plantController_.runManualPumpPulse()) {
+    sendJsonResult(409, false, F("Manual watering request was rejected."));
+    return;
+  }
+
+  sendJsonResult(200, true,
+                 String(F("Manual watering started for ")) + plant.settings.pumpPulseMs +
+                     F(" ms."));
 }
 
 void NetworkManager::handleCalibrationDryApi() {

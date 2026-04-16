@@ -1,0 +1,256 @@
+Upgrade 1 Test Inventory
+
+Purpose
+- List the tests that should exist for the current Smart Pot firmware.
+- Split coverage into unit, functional/integration, and end-to-end hardware tests.
+- Treat this as the backlog for actual test implementation, not as proof that tests already exist.
+
+Test strategy
+- Unit tests should cover pure logic and persistence behavior with fakes or host-side seams.
+- Functional/integration tests should exercise module interactions, HTTP route behavior, serial command behavior, and state transitions.
+- End-to-end tests should run on real ESP32 hardware because Wi-Fi, OTA, LEDs, GPIO, moisture sensing, and mDNS are hardware-dependent.
+- Prefer automating everything that does not strictly require real hardware or a real LAN environment.
+
+Recommended test support to add before large-scale implementation
+- A fake `Preferences` adapter so persistence behavior can be tested without real NVS.
+- A fake time source for `millis()` and epoch time so pump timing, cooldown, and NTP-dependent behavior can be tested deterministically.
+- Thin wrappers or injectable adapters for Wi-Fi, mDNS, OTA, DNS server, and web server responses.
+- Fake GPIO and ADC seams so pump/LED/sensor logic can be validated without the ESP32 runtime.
+- A small HTTP test harness for route handlers and JSON payload assertions.
+
+Unit tests
+
+ConfigStore
+- Load plant settings with defaults when Preferences is empty.
+- Load plant settings with stored values and clamp threshold, pulse, cooldown, and sample interval to allowed ranges.
+- Save plant settings writes the expected keys and values.
+- Load Wi-Fi credentials returns empty values when not configured.
+- Save Wi-Fi credentials writes SSID and password only.
+- Clear Wi-Fi credentials removes Wi-Fi keys and does not touch plant settings keys.
+- Load watering history returns empty when count is zero.
+- Load watering history reads the expected fields for up to 5 events.
+- Save watering history persists sequence, reason, started-at timestamp, duration, start raw/percent, and end raw/percent.
+- Save watering history removes stale slots above the active count.
+- Save watering history removes old `et` keys from previously stored end-time data.
+
+TimeService
+- `begin()` reports unsynchronized when the system clock is invalid.
+- `begin()` reports synchronized when the system clock is already valid.
+- `startSync()` requests NTP configuration once.
+- `tick()` does nothing while Wi-Fi is disconnected.
+- `tick()` requests sync automatically when Wi-Fi is connected and sync has not started.
+- `tick()` transitions to synchronized once a valid epoch is available.
+- `currentEpochMs()` returns `0` before sync and a real epoch after sync.
+
+PlantController core behavior
+- `begin()` loads plant settings, loads watering history, takes an initial moisture snapshot, and starts with pump off.
+- `readNow()` refreshes the current reading.
+- `captureCalibrationPoint(true)` stores the dry calibration from the current raw reading.
+- `captureCalibrationPoint(false)` stores the wet calibration from the current raw reading.
+- `clearCalibration()` clears dry and wet calibration and disables auto mode.
+- `setAutoMode(true)` fails when calibration is incomplete.
+- `setAutoMode(true)` fails when OTA lock is active.
+- `setAutoMode(false)` always succeeds.
+- `setDryThresholdPercent()` clamps to `5-95`.
+- `setPumpPulseMs()` clamps to `250-3000`.
+- `setCooldownMs()` clamps to `5000-600000`.
+- `setSampleIntervalMs()` clamps to `1000-600000`.
+- `computeMoisturePercent()` returns `-1` when calibration is invalid.
+- `computeMoisturePercent()` returns a bounded percentage when calibration is valid.
+- `runManualPumpPulse()` starts the pump when idle and unlocked.
+- `runManualPumpPulse()` is rejected while the pump is already running.
+- `runManualPumpPulse()` is rejected while OTA lock is active.
+- `maybeStopPump()` stops the pump when the configured pulse duration has elapsed.
+- `stopPump()` sets cooldown and records a watering history event.
+- Watering history events record start timestamp, duration, start raw/percent, and end raw/percent.
+- Watering history appends newest-first.
+- Watering history is capped at 5 events and drops the oldest event on the 6th insert.
+- `enterOtaLock()` disables auto mode.
+- `enterOtaLock()` stops an active pump immediately.
+- `enterOtaLock()` prevents new watering actions until reboot.
+- `snapshot()` reports current reading, pump state, OTA lock state, cooldown remaining, and watering history.
+
+PlantController automatic watering
+- `tick()` does not sample before the configured sample interval elapses.
+- `tick()` samples when the configured sample interval elapses.
+- Auto watering does not run when auto mode is disabled.
+- Auto watering does not run when calibration is invalid.
+- Auto watering disables auto mode when calibration is invalid at runtime.
+- Auto watering does not run while pump is active.
+- Auto watering does not run during cooldown.
+- Auto watering does not run during OTA lock.
+- Auto watering does not run when moisture is above threshold.
+- Auto watering starts one pulse when moisture is at or below threshold.
+
+LedManager
+- Setup AP state drives the green LED double-blink pattern.
+- STA connecting state drives the green LED 2 Hz blink pattern.
+- STA connected state drives the green heartbeat pattern.
+- OTA in progress drives the green fast blink pattern.
+- Pump running forces the red LED solid on.
+- Error state drives the red LED error blink when pump is not active.
+- Pump-running red LED behavior takes priority over error blinking.
+
+SerialConsole parsing
+- `help`, `h`, and `?` print the command list.
+- `read` and `m` trigger an immediate moisture read.
+- `status` and `s` print plant and network status.
+- `pump` and `p` trigger one manual pump pulse.
+- `diag` and `d` run the diagnostic sweep.
+- `auto on` enables auto mode only when calibration is valid and OTA lock is not active.
+- `auto off` disables auto mode.
+- `cal dry`, `cal wet`, and `cal clear` call the correct calibration actions.
+- `set threshold <n>` updates threshold.
+- `set pulse <ms>` updates pulse duration.
+- `set cooldown <ms>` updates cooldown.
+- `set sample <ms>` updates sample interval.
+- `wifi clear` clears only Wi-Fi credentials and re-enters setup mode.
+- Unknown commands print an error and help text.
+
+Functional and integration tests
+
+Network state machine
+- Boot with no Wi-Fi credentials enters `SetupAp`.
+- Boot with stored Wi-Fi credentials enters `StaConnecting`.
+- A successful STA connection transitions to `StaConnected`.
+- A failed STA connection retries up to 3 times.
+- After the 3rd failed connection attempt the device falls back to `SetupAp`.
+- A disconnect after being connected restarts STA connection attempts.
+- A disconnect after being connected falls back to `SetupAp` after 3 failed reconnect attempts.
+- `wifi clear` clears credentials and immediately returns to `SetupAp`.
+
+SoftAP and provisioning flow
+- Setup AP SSID follows `Smart-Pot-Setup-XXXX`.
+- Setup AP uses the shared secret as the WPA2 password.
+- DNS captive behavior redirects unknown hostnames to `/`.
+- `GET /` in AP mode serves the provisioning page.
+- `POST /api/provision` rejects an empty SSID.
+- `POST /api/provision` accepts an SSID with blank password for open networks.
+- `POST /api/provision` stores credentials and triggers STA connection attempts.
+- If new credentials still fail after 3 attempts, setup AP returns and the user-facing message explains failure.
+
+LAN auth and routing
+- `GET /` in STA mode requires HTTP Basic Auth.
+- `GET /api/status` in STA mode requires HTTP Basic Auth.
+- `POST /api/settings` in STA mode requires HTTP Basic Auth.
+- Calibration routes in STA mode require HTTP Basic Auth.
+- Unauthorized STA requests return the expected auth challenge.
+- `GET /` in STA mode serves the dashboard after successful auth.
+
+Status API
+- `/api/status` returns all expected top-level fields.
+- `/api/status` reports current Wi-Fi state correctly for AP, connecting, connected, and OTA.
+- `/api/status` includes the watering history array.
+- Watering history entries include `sequence`, `reason`, `startedAtEpochMs`, `durationMs`, `startRaw`, `startPercent`, `endRaw`, and `endPercent`.
+- `/api/status` no longer exposes `endedAtEpochMs`.
+- Older pre-NTP events expose `startedAtEpochMs = 0`.
+
+Settings API
+- `/api/settings` rejects invalid or missing numeric payloads.
+- `/api/settings` updates threshold, pulse, cooldown, sample interval, and auto mode.
+- `/api/settings` returns an error when enabling auto mode without valid calibration.
+- `/api/settings` returns an error while OTA is in progress.
+- Settings updates persist across reboot.
+
+Calibration API
+- `/api/calibration/dry` stores the current raw reading as dry calibration.
+- `/api/calibration/wet` stores the current raw reading as wet calibration.
+- `/api/calibration/clear` clears calibration and disables auto mode.
+- Calibration routes return `503` while OTA is in progress.
+- Calibration updates persist across reboot.
+
+OTA integration
+- OTA hostname is `smart-pot`.
+- OTA is available only when STA is connected.
+- OTA start transitions network state to `OtaInProgress`.
+- OTA start enables the plant OTA lock.
+- OTA blocks new pump actions until reboot.
+- OTA success reboots and reconnects with stored Wi-Fi credentials.
+- OTA preserves plant settings, Wi-Fi credentials, and watering history.
+- OTA with wrong password is rejected.
+- OTA error transitions back out of in-progress state and reports an error status.
+
+mDNS and time sync
+- Successful STA connection starts mDNS and advertises `smart-pot.local`.
+- Losing STA connectivity stops mDNS.
+- Reconnecting restarts mDNS.
+- Successful STA connection triggers NTP sync.
+- After NTP sync, new watering history entries have nonzero `startedAtEpochMs`.
+- Before NTP sync, watering history entries can legitimately have `startedAtEpochMs = 0`.
+
+Dashboard UI behavior
+- Dashboard loads successfully after Basic Auth.
+- Status card renders Wi-Fi state, SSID, IP, mDNS, OTA availability, auto mode, pump state, and status note.
+- Moisture card renders raw value, moisture percent, calibration, threshold, sample interval, cooldown, and pulse duration.
+- Settings form initializes from `/api/status`.
+- Saving settings updates the UI after refresh.
+- Dry calibration button triggers `/api/calibration/dry` and refreshes.
+- Wet calibration button triggers `/api/calibration/wet` and refreshes.
+- Clear calibration button triggers `/api/calibration/clear` and refreshes.
+- Dashboard polling refreshes status every 5 seconds.
+- Watering history renders the empty state when there are no events.
+- Watering history renders newest-first when events exist.
+- Watering history renders the start timestamp and duration.
+- Watering history does not render an end timestamp anymore.
+- Watering history renders `time unavailable` when `startedAtEpochMs` is `0`.
+
+End-to-end hardware tests
+
+Provisioning and connectivity
+- Fresh board with no stored credentials boots into the setup AP.
+- Phone or laptop can join the setup AP using the shared secret.
+- Opening `http://192.168.4.1` on the setup AP shows the provisioning page.
+- Provisioning valid 2.4 GHz credentials joins the LAN successfully.
+- Provisioning invalid credentials falls back to setup AP after 3 attempts.
+- `wifi clear` from serial wipes Wi-Fi only and immediately restores setup AP mode.
+- Connected board is reachable by both IP and `smart-pot.local`.
+
+Dashboard and controls
+- LAN dashboard is accessible from a browser on the same network with Basic Auth.
+- Editing threshold, pump pulse, cooldown, sample interval, and auto mode through the dashboard changes device behavior and survives reboot.
+- Capturing dry and wet calibration from the dashboard persists and is reflected in serial status.
+- Clearing calibration from the dashboard disables auto mode and persists across reboot.
+
+Watering behavior
+- Manual pump trigger from serial physically activates the pump for the configured duration.
+- Pump output returns low after the configured duration.
+- Cooldown prevents a second automatic watering pulse until cooldown has elapsed.
+- Automatic watering physically triggers when calibrated moisture falls at or below threshold.
+- Automatic watering does not trigger when moisture is above threshold.
+- Automatic watering remains disabled on every reboot until the user enables it again.
+
+Watering history
+- A manual watering event appears in the dashboard and `/api/status`.
+- An automatic watering event appears in the dashboard and `/api/status`.
+- New watering events include the start timestamp once NTP has synchronized.
+- Watering history preserves events across reboot.
+- After more than 5 watering events, only the newest 5 remain.
+- Older pre-change events without timestamps display `time unavailable` in the dashboard.
+
+OTA on real hardware
+- OTA upload with the shared secret succeeds over Wi-Fi.
+- OTA upload with a wrong password fails.
+- During OTA, pump actions are blocked.
+- After OTA reboot, Wi-Fi credentials, plant settings, calibration, and watering history remain intact.
+
+LED behavior
+- Green LED visually matches setup AP, connecting, connected, and OTA patterns.
+- Red LED is solid while the pump is running.
+- Red LED shows the error pattern when the network manager is in an error condition and the pump is not active.
+
+Serial flows
+- Serial boot log prints firmware version and current status.
+- Serial `status` reflects Wi-Fi state, AP SSID, IP address, mDNS state, and OTA availability accurately.
+- Serial `pump`, `cal dry`, `cal wet`, `cal clear`, `auto on`, `auto off`, `wifi clear`, and `set ...` commands behave correctly on hardware.
+
+Regression tests
+- Moisture readings still work when Wi-Fi is unavailable.
+- SoftAP setup mode does not stop moisture sampling or basic plant-state tracking.
+- Wi-Fi reconnect attempts do not corrupt stored plant settings.
+- Watering history changes do not break OTA, provisioning, calibration, or settings routes.
+- NTP support does not block local dashboard use if time sync is delayed or unavailable.
+
+Priority order for implementation
+1. Unit tests for ConfigStore, PlantController logic, TimeService, and watering history behavior.
+2. Functional tests for network state transitions, HTTP routes, auth, and JSON payloads.
+3. End-to-end hardware tests for provisioning, OTA, dashboard actions, LEDs, and real watering behavior.

@@ -183,6 +183,7 @@ String buildDashboardPage() {
         <h2>Calibration</h2>
         <p>Use the current sensor reading as the dry or wet reference point.</p>
         <div class="actions">
+          <button id="manualWaterBtn" type="button">Manual Watering</button>
           <button id="dryBtn" type="button">Capture Dry</button>
           <button id="wetBtn" type="button">Capture Wet</button>
           <button id="clearBtn" type="button" class="secondary">Clear Calibration</button>
@@ -316,6 +317,9 @@ String buildDashboardPage() {
       if (document.activeElement !== autoInput) {
         autoInput.checked = !!data.autoEnabled;
       }
+
+      document.getElementById('manualWaterBtn').disabled =
+        !!data.pumpRunning || !!data.otaInProgress;
     }
 
     async function postForm(url, body) {
@@ -371,6 +375,16 @@ String buildDashboardPage() {
     document.getElementById('wetBtn').addEventListener('click', async () => {
       try {
         const result = await postForm('/api/calibration/wet', '');
+        setMessage(result.message);
+        await refresh();
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
+
+    document.getElementById('manualWaterBtn').addEventListener('click', async () => {
+      try {
+        const result = await postForm('/api/manual-water', '');
         setMessage(result.message);
         await refresh();
       } catch (error) {

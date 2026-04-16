@@ -8,7 +8,25 @@ namespace {
 
 constexpr time_t kValidEpochThreshold = 1704067200;  // 2024-01-01T00:00:00Z
 
+void configureSystemTime(const char* primary, const char* secondary, const char* tertiary) {
+  configTime(0, 0, primary, secondary, tertiary);
+}
+
+time_t readSystemSeconds() { return time(nullptr); }
+
+bool readSystemTimespec(struct timespec* out) {
+  return out != nullptr && clock_gettime(CLOCK_REALTIME, out) == 0;
+}
+
+const TimeServiceOps kDefaultTimeServiceOps = {
+    configureSystemTime,
+    readSystemSeconds,
+    readSystemTimespec,
+};
+
 }  // namespace
+
+TimeService::TimeService(const TimeServiceOps* ops) : ops_(ops != nullptr ? ops : &kDefaultTimeServiceOps) {}
 
 void TimeService::begin() {
   syncRequested_ = false;
@@ -17,7 +35,7 @@ void TimeService::begin() {
 }
 
 void TimeService::startSync() {
-  configTime(0, 0, kNtpServerPrimary, kNtpServerSecondary, kNtpServerTertiary);
+  ops_->configure(kNtpServerPrimary, kNtpServerSecondary, kNtpServerTertiary);
   syncRequested_ = true;
   nextSyncCheckAtMs_ = 0;
 }
@@ -52,7 +70,7 @@ bool TimeService::isSynchronized() const { return synchronized_; }
 
 uint64_t TimeService::currentEpochMs() const {
   struct timespec now;
-  if (clock_gettime(CLOCK_REALTIME, &now) != 0) {
+  if (!ops_->readTimespec(&now)) {
     return 0;
   }
 
@@ -65,6 +83,6 @@ uint64_t TimeService::currentEpochMs() const {
 }
 
 bool TimeService::looksSynchronized() const {
-  time_t now = time(nullptr);
+  time_t now = ops_->readSeconds();
   return now >= kValidEpochThreshold;
 }
