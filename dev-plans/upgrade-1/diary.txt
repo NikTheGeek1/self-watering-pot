@@ -39,3 +39,4 @@
 [2026-04-16] Expanded another host-side batch with more ConfigStore and TimeService assertions, more automatic-watering branches in PlantController, and additional NetworkManager auth, OTA, setup-mode, and credential-clearing cases.
 [2026-04-16] Expanded the Playwright harness to mirror the firmware’s invalid auto-enable behavior and added another dashboard error-path test for that banner flow.
 [2026-04-16] Added a safe hardware smoke `status-schema` command and verified it against the live device. The current totals are `68` passing native tests, `13` passing Playwright tests, and the live smoke commands for `status-schema` and earlier `manual-water` both succeeding against `smart-pot.local`.
+[2026-04-16] Removed the GitHub Actions workflow file at the user's request.
