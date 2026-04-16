@@ -66,8 +66,6 @@ void appendWateringHistoryJson(String& json, const PlantStatusSnapshot& plant) {
     json += wateringReasonToText(event.reason);
     json += F("\",\"startedAtEpochMs\":");
     json += event.startedAtEpochMs;
-    json += F(",\"endedAtEpochMs\":");
-    json += event.endedAtEpochMs;
     json += F(",\"durationMs\":");
     json += event.durationMs;
     json += F(",\"startRaw\":");

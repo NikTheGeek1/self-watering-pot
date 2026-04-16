@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-constexpr char kAppVersion[] = "1.0.4-water-history-time";
+constexpr char kAppVersion[] = "1.0.5-water-history-start";
 constexpr char kDeviceLabel[] = "Smart Pot";
 constexpr char kHostname[] = "smart-pot";
 constexpr char kMdnsName[] = "smart-pot.local";

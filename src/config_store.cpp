@@ -136,7 +136,6 @@ size_t ConfigStore::loadWateringHistory(WateringEvent* events, size_t capacity) 
     event.reason = static_cast<WateringReason>(
         preferences_.getUChar(wateringHistoryKey(i, "why").c_str(), 0));
     event.startedAtEpochMs = preferences_.getULong64(wateringHistoryKey(i, "st").c_str(), 0);
-    event.endedAtEpochMs = preferences_.getULong64(wateringHistoryKey(i, "et").c_str(), 0);
     event.durationMs = preferences_.getUInt(wateringHistoryKey(i, "dur").c_str(), 0);
     event.startRaw = preferences_.getInt(wateringHistoryKey(i, "sr").c_str(), -1);
     event.startPercent = preferences_.getInt(wateringHistoryKey(i, "sp").c_str(), -1);
@@ -153,16 +152,19 @@ void ConfigStore::saveWateringHistory(const WateringEvent* events, size_t count)
 
   for (size_t i = 0; i < boundedCount; ++i) {
     const WateringEvent& event = events[i];
+    const String endedAtKey = wateringHistoryKey(i, "et");
     preferences_.putUInt(wateringHistoryKey(i, "seq").c_str(), event.sequence);
     preferences_.putUChar(wateringHistoryKey(i, "why").c_str(),
                           static_cast<uint8_t>(event.reason));
     preferences_.putULong64(wateringHistoryKey(i, "st").c_str(), event.startedAtEpochMs);
-    preferences_.putULong64(wateringHistoryKey(i, "et").c_str(), event.endedAtEpochMs);
     preferences_.putUInt(wateringHistoryKey(i, "dur").c_str(), event.durationMs);
     preferences_.putInt(wateringHistoryKey(i, "sr").c_str(), event.startRaw);
     preferences_.putInt(wateringHistoryKey(i, "sp").c_str(), event.startPercent);
     preferences_.putInt(wateringHistoryKey(i, "er").c_str(), event.endRaw);
     preferences_.putInt(wateringHistoryKey(i, "ep").c_str(), event.endPercent);
+    if (preferences_.isKey(endedAtKey.c_str())) {
+      preferences_.remove(endedAtKey.c_str());
+    }
   }
 
   for (size_t i = boundedCount; i < kWateringHistoryLimit; ++i) {

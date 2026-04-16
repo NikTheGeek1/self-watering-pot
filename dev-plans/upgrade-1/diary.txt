@@ -22,3 +22,4 @@
 [2026-04-16] Added a persisted watering-history buffer with a 5-event cap, wired it into pump start/stop handling, exposed it in /api/status, and rendered it in the dashboard so recent watering runs are visible without adding cloud or streaming dependencies.
 [2026-04-16] Guarded history-key cleanup with Preferences.isKey() so saving the first few events does not emit noisy NOT_FOUND errors for empty slots.
 [2026-04-16] Added NTP-backed start/end timestamps to each watering event, stored them in Preferences, and updated the dashboard to render when a watering run started and ended in local browser time.
+[2026-04-16] Simplified watering history timestamps to keep only the start time plus duration, removed end-time exposure from the API/UI, and scrubbed old persisted end-time keys when saving history.

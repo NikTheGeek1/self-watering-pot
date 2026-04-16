@@ -406,7 +406,6 @@ void PlantController::stopPump(const char* reason) {
   event.sequence = nextWateringSequence_++;
   event.reason = activeWateringReason_;
   event.startedAtEpochMs = activeWateringStartedAtEpochMs_;
-  event.endedAtEpochMs = timeService_.currentEpochMs();
   event.durationMs = stoppedAtMs - activeWateringStartedAtMs_;
   event.startRaw = activeWateringStartRaw_;
   event.startPercent = activeWateringStartPercent_;

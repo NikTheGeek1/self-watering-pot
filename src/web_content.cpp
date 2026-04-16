@@ -270,7 +270,6 @@ String buildDashboardPage() {
           </div>
           <div class="history-metrics">
             <div><span>Started</span>${escapeHtml(formatTimestamp(event.startedAtEpochMs))}</div>
-            <div><span>Ended</span>${escapeHtml(formatTimestamp(event.endedAtEpochMs))}</div>
             <div><span>Start moisture</span>${escapeHtml(formatPercent(event.startPercent))}</div>
             <div><span>End moisture</span>${escapeHtml(formatPercent(event.endPercent))}</div>
             <div><span>Start raw</span>${escapeHtml(formatRaw(event.startRaw))}</div>

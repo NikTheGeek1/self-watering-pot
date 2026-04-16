@@ -12,7 +12,6 @@ struct WateringEvent {
   uint32_t sequence = 0;
   WateringReason reason = WateringReason::Unknown;
   uint64_t startedAtEpochMs = 0;
-  uint64_t endedAtEpochMs = 0;
   uint32_t durationMs = 0;
   int startRaw = -1;
   int startPercent = -1;
