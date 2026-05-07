@@ -69,6 +69,21 @@ function mergeState(patch) {
   state = { ...state, ...patch };
 }
 
+function calibrationPayloadError(form) {
+  const dryRaw = Number(form.dryRaw);
+  const wetRaw = Number(form.wetRaw);
+  if (!Number.isInteger(dryRaw) || !Number.isInteger(wetRaw)) {
+    return "Invalid calibration payload.";
+  }
+  if (dryRaw < 0 || dryRaw > 4095 || wetRaw < 0 || wetRaw > 4095) {
+    return "Calibration values must be between 0 and 4095.";
+  }
+  if (dryRaw === wetRaw) {
+    return "Dry and wet calibration values must be different.";
+  }
+  return "";
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.url === "/health") {
     send(res, 200, "text/plain", "ok");
@@ -184,6 +199,22 @@ const server = http.createServer(async (req, res) => {
       autoEnabled: form.autoEnabled === "1",
     });
     send(res, 200, "application/json", JSON.stringify({ ok: true, message: "Settings updated." }));
+    return;
+  }
+
+  if (req.url === "/api/calibration" && req.method === "POST") {
+    const form = parseForm(await collectBody(req));
+    const error = calibrationPayloadError(form);
+    if (error) {
+      send(res, 400, "application/json", JSON.stringify({ ok: false, message: error }));
+      return;
+    }
+
+    mergeState({
+      dryRaw: Number(form.dryRaw),
+      wetRaw: Number(form.wetRaw),
+    });
+    send(res, 200, "application/json", JSON.stringify({ ok: true, message: "Calibration values updated." }));
     return;
   }
 

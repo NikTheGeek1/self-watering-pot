@@ -6,6 +6,8 @@ TEST(WebContentTest, DashboardIncludesManualWateringButtonAndHistoryCard) {
   const String html = buildDashboardPage();
 
   EXPECT_NE(html.std().find("Manual Watering"), std::string::npos);
+  EXPECT_NE(html.std().find("Save Calibration Values"), std::string::npos);
+  EXPECT_NE(html.std().find("/api/calibration"), std::string::npos);
   EXPECT_NE(html.std().find("Recent Watering"), std::string::npos);
   EXPECT_NE(html.std().find("/api/manual-water"), std::string::npos);
 }

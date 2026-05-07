@@ -155,6 +155,7 @@ Settings API
 Calibration API
 - `/api/calibration/dry` stores the current raw reading as dry calibration.
 - `/api/calibration/wet` stores the current raw reading as wet calibration.
+- `/api/calibration` stores typed dry and wet raw calibration values after validation.
 - `/api/calibration/clear` clears calibration and disables auto mode.
 - Calibration routes return `503` while OTA is in progress.
 - Calibration updates persist across reboot.
@@ -186,6 +187,7 @@ Dashboard UI behavior
 - Saving settings updates the UI after refresh.
 - Dry calibration button triggers `/api/calibration/dry` and refreshes.
 - Wet calibration button triggers `/api/calibration/wet` and refreshes.
+- Manual calibration form stores typed dry and wet raw values and refreshes.
 - Clear calibration button triggers `/api/calibration/clear` and refreshes.
 - Dashboard polling refreshes status every 5 seconds.
 - Watering history renders the empty state when there are no events.
@@ -209,6 +211,7 @@ Dashboard and controls
 - LAN dashboard is accessible from a browser on the same network with Basic Auth.
 - Editing threshold, pump pulse, cooldown, sample interval, and auto mode through the dashboard changes device behavior and survives reboot.
 - Capturing dry and wet calibration from the dashboard persists and is reflected in serial status.
+- Typing dry and wet calibration values in the dashboard persists and is reflected in serial status.
 - Clearing calibration from the dashboard disables auto mode and persists across reboot.
 
 Watering behavior

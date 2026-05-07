@@ -56,6 +56,7 @@ class NetworkManager {
   void handleStatusApi();
   void handleSettingsApi();
   void handleManualWaterApi();
+  void handleCalibrationValuesApi();
   void handleCalibrationDryApi();
   void handleCalibrationWetApi();
   void handleCalibrationClearApi();

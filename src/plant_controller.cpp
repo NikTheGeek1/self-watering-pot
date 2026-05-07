@@ -77,6 +77,29 @@ void PlantController::captureCalibrationPoint(bool captureDry, Stream* out) {
   }
 }
 
+bool PlantController::setCalibrationValues(int dryRaw, int wetRaw, String* errorOut) {
+  if (dryRaw < kMinMoistureRaw || dryRaw > kMaxMoistureRaw || wetRaw < kMinMoistureRaw ||
+      wetRaw > kMaxMoistureRaw) {
+    if (errorOut != nullptr) {
+      *errorOut = F("Calibration values must be between 0 and 4095.");
+    }
+    return false;
+  }
+
+  if (dryRaw == wetRaw) {
+    if (errorOut != nullptr) {
+      *errorOut = F("Dry and wet calibration values must be different.");
+    }
+    return false;
+  }
+
+  settings_.dryRaw = dryRaw;
+  settings_.wetRaw = wetRaw;
+  lastMoisturePercent_ = computeMoisturePercent(lastRawReading_);
+  savePersistentConfig();
+  return true;
+}
+
 void PlantController::clearCalibration(Stream* out) {
   settings_.dryRaw = -1;
   settings_.wetRaw = -1;

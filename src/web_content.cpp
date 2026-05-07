@@ -93,6 +93,7 @@ String buildDashboardPage() {
     dt { color: #58715d; }
     dd { margin: 0; font-weight: 700; }
     form { display: grid; gap: 12px; }
+    form + .actions { margin-top: 12px; }
     label { display: grid; gap: 6px; font-size: 0.95rem; }
     input { padding: 10px 12px; border-radius: 12px; border: 1px solid #bacbb9; font-size: 1rem; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -181,7 +182,17 @@ String buildDashboardPage() {
 
       <div class="card">
         <h2>Calibration</h2>
-        <p>Use the current sensor reading as the dry or wet reference point.</p>
+        <form id="calibrationForm">
+          <label>Dry raw value
+            <input id="dryRawInput" name="dryRaw" type="number" min="0" max="4095" required>
+          </label>
+          <label>Wet raw value
+            <input id="wetRawInput" name="wetRaw" type="number" min="0" max="4095" required>
+          </label>
+          <div class="actions">
+            <button type="submit">Save Calibration Values</button>
+          </div>
+        </form>
         <div class="actions">
           <button id="manualWaterBtn" type="button">Manual Watering</button>
           <button id="dryBtn" type="button">Capture Dry</button>
@@ -312,6 +323,8 @@ String buildDashboardPage() {
       setInputValue('pulseInput', data.pumpPulseMs);
       setInputValue('cooldownInput', data.cooldownMs);
       setInputValue('sampleInput', data.sampleIntervalMs);
+      setInputValue('dryRawInput', data.dryRaw >= 0 ? data.dryRaw : '');
+      setInputValue('wetRawInput', data.wetRaw >= 0 ? data.wetRaw : '');
 
       const autoInput = document.getElementById('autoInput');
       if (document.activeElement !== autoInput) {
@@ -355,6 +368,21 @@ String buildDashboardPage() {
 
       try {
         const result = await postForm('/api/settings', params.toString());
+        setMessage(result.message);
+        await refresh();
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
+
+    document.getElementById('calibrationForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const params = new URLSearchParams();
+      params.set('dryRaw', document.getElementById('dryRawInput').value);
+      params.set('wetRaw', document.getElementById('wetRawInput').value);
+
+      try {
+        const result = await postForm('/api/calibration', params.toString());
         setMessage(result.message);
         await refresh();
       } catch (error) {
