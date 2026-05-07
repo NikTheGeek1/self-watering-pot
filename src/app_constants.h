@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-constexpr char kAppVersion[] = "1.0.6-manual-water";
+constexpr char kAppVersion[] = "1.0.7-manual-calibration";
 constexpr char kDeviceLabel[] = "Smart Pot";
 constexpr char kHostname[] = "smart-pot";
 constexpr char kMdnsName[] = "smart-pot.local";
@@ -36,6 +36,8 @@ constexpr uint32_t kMinSampleIntervalMs = 1000;
 constexpr uint32_t kMaxSampleIntervalMs = 10UL * 60UL * 1000UL;
 constexpr uint8_t kMinThresholdPercent = 5;
 constexpr uint8_t kMaxThresholdPercent = 95;
+constexpr int kMinMoistureRaw = 0;
+constexpr int kMaxMoistureRaw = 4095;
 
 constexpr size_t kCommandBufferSize = 96;
 constexpr size_t kMoistureSamplesPerRead = 8;

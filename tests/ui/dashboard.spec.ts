@@ -20,6 +20,8 @@ test("dashboard renders status and manual watering controls", async ({ page }) =
   await expect(page.locator("#lastMoisturePercent")).toHaveText("48%");
   await expect(page.locator("#thresholdInput")).toHaveValue("35");
   await expect(page.locator("#pulseInput")).toHaveValue("1200");
+  await expect(page.locator("#dryRawInput")).toHaveValue("3200");
+  await expect(page.locator("#wetRawInput")).toHaveValue("1600");
 });
 
 test("settings form saves values through the API", async ({ page }) => {
@@ -178,6 +180,28 @@ test("calibration actions update the moisture card", async ({ page, request }) =
   await page.getByRole("button", { name: "Clear Calibration" }).click();
   await expect(page.locator("#dryRaw")).toHaveText("unset");
   await expect(page.locator("#wetRaw")).toHaveText("unset");
+});
+
+test("manual calibration form saves typed raw values", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#dryRawInput").fill("3333");
+  await page.locator("#wetRawInput").fill("1444");
+  await page.getByRole("button", { name: "Save Calibration Values" }).click();
+
+  await expect(page.locator("#message")).toHaveText("Calibration values updated.");
+  await expect(page.locator("#dryRaw")).toHaveText("3333");
+  await expect(page.locator("#wetRaw")).toHaveText("1444");
+});
+
+test("manual calibration errors are shown in the banner", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#dryRawInput").fill("2000");
+  await page.locator("#wetRawInput").fill("2000");
+  await page.getByRole("button", { name: "Save Calibration Values" }).click();
+
+  await expect(page.locator("#message")).toContainText(
+    "Dry and wet calibration values must be different."
+  );
 });
 
 test("status polling refreshes the page data", async ({ page, request }) => {

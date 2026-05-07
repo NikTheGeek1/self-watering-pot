@@ -198,6 +198,7 @@ void NetworkManager::configureRoutes() {
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusApi(); });
   server_.on("/api/settings", HTTP_POST, [this]() { handleSettingsApi(); });
   server_.on("/api/manual-water", HTTP_POST, [this]() { handleManualWaterApi(); });
+  server_.on("/api/calibration", HTTP_POST, [this]() { handleCalibrationValuesApi(); });
   server_.on("/api/calibration/dry", HTTP_POST, [this]() { handleCalibrationDryApi(); });
   server_.on("/api/calibration/wet", HTTP_POST, [this]() { handleCalibrationWetApi(); });
   server_.on("/api/calibration/clear", HTTP_POST, [this]() { handleCalibrationClearApi(); });
@@ -326,6 +327,34 @@ void NetworkManager::handleManualWaterApi() {
   sendJsonResult(200, true,
                  String(F("Manual watering started for ")) + plant.settings.pumpPulseMs +
                      F(" ms."));
+}
+
+void NetworkManager::handleCalibrationValuesApi() {
+  if (!authorizeStaRequest()) {
+    return;
+  }
+
+  if (state_ == WiFiState::OtaInProgress) {
+    sendJsonResult(503, false, F("Calibration is temporarily locked while OTA is in progress."));
+    return;
+  }
+
+  unsigned long dryRaw = 0;
+  unsigned long wetRaw = 0;
+  if (!parseUnsigned(server_.arg("dryRaw"), &dryRaw) ||
+      !parseUnsigned(server_.arg("wetRaw"), &wetRaw)) {
+    sendJsonResult(400, false, F("Invalid calibration payload."));
+    return;
+  }
+
+  String error;
+  if (!plantController_.setCalibrationValues(static_cast<int>(dryRaw), static_cast<int>(wetRaw),
+                                             &error)) {
+    sendJsonResult(400, false, error);
+    return;
+  }
+
+  sendJsonResult(200, true, F("Calibration values updated."));
 }
 
 void NetworkManager::handleCalibrationDryApi() {

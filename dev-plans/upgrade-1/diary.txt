@@ -40,3 +40,5 @@
 [2026-04-16] Expanded the Playwright harness to mirror the firmware’s invalid auto-enable behavior and added another dashboard error-path test for that banner flow.
 [2026-04-16] Added a safe hardware smoke `status-schema` command and verified it against the live device. The current totals are `68` passing native tests, `13` passing Playwright tests, and the live smoke commands for `status-schema` and earlier `manual-water` both succeeding against `smart-pot.local`.
 [2026-04-16] Removed the GitHub Actions workflow file at the user's request.
+[2026-05-07] Added manual dry/wet calibration editing through a new authenticated `/api/calibration` route and dashboard inputs while keeping the existing capture-current-reading buttons. Rationale: known raw ADC calibration values should be reusable without physically recreating dry and wet probe states.
+[2026-05-07] Verified manual calibration editing with native tests, the Playwright dashboard suite, and a full ESP32 PlatformIO build. Rationale: the change touches persisted plant settings, authenticated API behavior, embedded HTML, and firmware compilation.

@@ -155,6 +155,26 @@ TEST_F(PlantControllerTest, CaptureCalibrationPointsAndClearCalibrationUpdateSta
   EXPECT_FALSE(status.calibrationValid);
 }
 
+TEST_F(PlantControllerTest, ManualCalibrationValuesPersistAndRefreshMoisturePercent) {
+  native_test::setAnalogValue(kMoisturePin, 2500);
+  PlantController controller(store_, *timeService_);
+  controller.begin();
+
+  String error;
+  ASSERT_TRUE(controller.setCalibrationValues(3000, 1000, &error));
+  PlantStatusSnapshot status = controller.snapshot(native_test::currentMillis());
+  EXPECT_EQ(status.settings.dryRaw, 3000);
+  EXPECT_EQ(status.settings.wetRaw, 1000);
+  EXPECT_EQ(status.lastMoisturePercent, 25);
+  EXPECT_EQ(store_.loadPlantSettings().dryRaw, 3000);
+
+  EXPECT_FALSE(controller.setCalibrationValues(2000, 2000, &error));
+  EXPECT_EQ(error, "Dry and wet calibration values must be different.");
+  status = controller.snapshot(native_test::currentMillis());
+  EXPECT_EQ(status.settings.dryRaw, 3000);
+  EXPECT_EQ(status.settings.wetRaw, 1000);
+}
+
 TEST_F(PlantControllerTest, SetterMethodsClampToConfiguredRanges) {
   native_test::setAnalogValue(kMoisturePin, 2800);
   PlantController controller(store_, *timeService_);

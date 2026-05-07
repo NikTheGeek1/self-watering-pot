@@ -27,6 +27,7 @@ class PlantController {
 
   void readNow(Stream* out = nullptr);
   void captureCalibrationPoint(bool captureDry, Stream* out = nullptr);
+  bool setCalibrationValues(int dryRaw, int wetRaw, String* errorOut = nullptr);
   void clearCalibration(Stream* out = nullptr);
 
   bool setAutoMode(bool enabled, String* errorOut = nullptr);

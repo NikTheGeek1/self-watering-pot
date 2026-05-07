@@ -277,6 +277,33 @@ TEST_F(NetworkManagerTest, SettingsApiSuccessPersistsUpdatedValues) {
   EXPECT_EQ(saved.sampleIntervalMs, 9000u);
 }
 
+TEST_F(NetworkManagerTest, CalibrationValuesApiValidatesAndPersistsTypedValues) {
+  store_.saveWiFiCredentials(WiFiCredentials{"GardenNet", "secret"});
+  NetworkManager manager(store_, *plant_, time_);
+  manager.begin();
+  connect(manager);
+
+  WebServer* server = WebServer::lastInstance();
+  ASSERT_NE(server, nullptr);
+
+  FakeHttpResponse invalid = server->simulateRequest(
+      HTTP_POST, "/api/calibration", {{"dryRaw", "2000"}, {"wetRaw", "2000"}},
+      kWebAuthUser, kSharedSecret);
+  EXPECT_EQ(invalid.statusCode, 400);
+  EXPECT_NE(invalid.body.std().find("Dry and wet calibration values must be different."),
+            std::string::npos);
+
+  FakeHttpResponse response = server->simulateRequest(
+      HTTP_POST, "/api/calibration", {{"dryRaw", "3300"}, {"wetRaw", "1500"}},
+      kWebAuthUser, kSharedSecret);
+  EXPECT_EQ(response.statusCode, 200);
+  EXPECT_NE(response.body.std().find("Calibration values updated."), std::string::npos);
+
+  const PlantSettings saved = store_.loadPlantSettings();
+  EXPECT_EQ(saved.dryRaw, 3300);
+  EXPECT_EQ(saved.wetRaw, 1500);
+}
+
 TEST_F(NetworkManagerTest, CalibrationRoutesPersistValuesAndClearDisablesAuto) {
   store_.saveWiFiCredentials(WiFiCredentials{"GardenNet", "secret"});
   NetworkManager manager(store_, *plant_, time_);
@@ -323,6 +350,11 @@ TEST_F(NetworkManagerTest, CalibrationRoutesReturn503DuringOta) {
 
   EXPECT_EQ(manager.snapshot().state, WiFiState::OtaInProgress);
   EXPECT_EQ(response.statusCode, 503);
+
+  FakeHttpResponse manualValues = server->simulateRequest(
+      HTTP_POST, "/api/calibration", {{"dryRaw", "3300"}, {"wetRaw", "1500"}},
+      kWebAuthUser, kSharedSecret);
+  EXPECT_EQ(manualValues.statusCode, 503);
   EXPECT_TRUE(plant_->snapshot(native_test::currentMillis()).otaLockActive);
 }
 

@@ -100,11 +100,12 @@ See `dev-plans/upgrade-1/test-plan.txt` for the implementation/execution plan an
 - `wifi clear` erases only the saved Wi-Fi credentials and reopens setup AP mode.
 
 ## Calibration Workflow
-1. Place the moisture probe in your dry reference state and send `cal dry`, or use the dashboard.
-2. Place the probe in your wet reference state and send `cal wet`, or use the dashboard.
-3. Send `status` or open the dashboard to confirm both calibration values are stored.
-4. Choose a threshold with `set threshold <n>` or the dashboard form.
-5. Enable automatic watering with `auto on` or the dashboard.
+1. Place the moisture probe in your dry reference state and send `cal dry`, or capture it from the dashboard.
+2. Place the probe in your wet reference state and send `cal wet`, or capture it from the dashboard.
+3. To reuse known calibration readings, type dry and wet raw ADC values directly into the dashboard calibration form.
+4. Send `status` or open the dashboard to confirm both calibration values are stored.
+5. Choose a threshold with `set threshold <n>` or the dashboard form.
+6. Enable automatic watering with `auto on` or the dashboard.
 
 ## Safety Notes
 - During USB-assisted testing, keep the ESP32 on USB power and leave the `buck OUT+ -> ESP32 5V/VIN` wire disconnected to avoid feeding the board from USB and the buck at the same time.
